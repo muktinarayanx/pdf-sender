@@ -12,9 +12,7 @@ const userBadge = document.getElementById('userBadge');
 const logoutBtn = document.getElementById('logoutBtn');
 
 const loginForm = document.getElementById('loginForm');
-const registerForm = document.getElementById('registerForm');
 const loginMessage = document.getElementById('loginMessage');
-const registerMessage = document.getElementById('registerMessage');
 
 const uploadCard = document.getElementById('uploadCard');
 const uploadForm = document.getElementById('uploadForm');
@@ -28,18 +26,7 @@ const removeFileBtn = document.getElementById('removeFile');
 const refreshBtn = document.getElementById('refreshBtn');
 const filesList = document.getElementById('filesList');
 
-// ===== Auth Tabs =====
-document.querySelectorAll('.auth-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
 
-        const target = tab.dataset.tab;
-        loginForm.classList.toggle('hidden', target !== 'login');
-        registerForm.classList.toggle('hidden', target !== 'register');
-        clearMessages();
-    });
-});
 
 // ===== Helpers =====
 function showMessage(el, text, type) {
@@ -48,7 +35,7 @@ function showMessage(el, text, type) {
 }
 
 function clearMessages() {
-    [loginMessage, registerMessage, uploadMessage].forEach(el => {
+    [loginMessage, uploadMessage].forEach(el => {
         el.textContent = '';
         el.className = 'form-message';
     });
@@ -105,38 +92,6 @@ function logout() {
     updateUI();
 }
 
-// ===== Register =====
-registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    clearMessages();
-
-    const name = document.getElementById('regName').value.trim();
-    const email = document.getElementById('regEmail').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const role = document.getElementById('regRole').value;
-
-    try {
-        const res = await fetch(`${API}/api/auth/register`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password, role }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-            showMessage(registerMessage, data.message || 'Registration failed.', 'error');
-            return;
-        }
-
-        saveAuth(data);
-        showMessage(registerMessage, 'Account created!', 'success');
-        registerForm.reset();
-        setTimeout(updateUI, 500);
-    } catch (err) {
-        showMessage(registerMessage, 'Network error. Try again.', 'error');
-    }
-});
 
 // ===== Login =====
 loginForm.addEventListener('submit', async (e) => {
