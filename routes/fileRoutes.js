@@ -9,7 +9,7 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({
     storage,
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB limit per file
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'application/pdf') {
             cb(null, true);
@@ -19,30 +19,34 @@ const upload = multer({
     },
 });
 
-// POST /api/files/upload — Upload PDF and store in MongoDB (uploader only)
-router.post('/upload', authMiddleware, uploaderOnly, upload.single('pdf'), async (req, res) => {
+// POST /api/files/upload — Upload one or multiple PDFs and store in MongoDB (uploader only)
+router.post('/upload', authMiddleware, uploaderOnly, upload.array('pdf', 10), async (req, res) => {
     try {
-        if (!req.file) {
-            return res.status(400).json({ message: 'No PDF file provided.' });
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ message: 'No PDF file(s) provided.' });
         }
 
-        // Store PDF binary data directly in MongoDB
-        const file = await File.create({
-            fileName: req.file.originalname,
-            fileData: req.file.buffer,
-            contentType: req.file.mimetype,
-            fileSize: req.file.size,
-            uploadedBy: req.user._id,
-        });
-
-        res.status(201).json({
-            message: 'PDF uploaded successfully!',
-            file: {
+        // Store each PDF binary data directly in MongoDB
+        const savedFiles = [];
+        for (const f of req.files) {
+            const file = await File.create({
+                fileName: f.originalname,
+                fileData: f.buffer,
+                contentType: f.mimetype,
+                fileSize: f.size,
+                uploadedBy: req.user._id,
+            });
+            savedFiles.push({
                 id: file._id,
                 fileName: file.fileName,
                 fileSize: file.fileSize,
                 uploadDate: file.uploadDate,
-            },
+            });
+        }
+
+        res.status(201).json({
+            message: `${savedFiles.length} PDF(s) uploaded successfully!`,
+            files: savedFiles,
         });
     } catch (error) {
         console.error('Upload error:', error);
@@ -88,4 +92,42 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
     }
 });
 
+// DELETE /api/files/:id — Delete a single PDF (uploader only)
+router.delete('/:id', authMiddleware, uploaderOnly, async (req, res) => {
+    try {
+        const file = await File.findById(req.params.id);
+        if (!file) {
+            return res.status(404).json({ message: 'File not found.' });
+        }
+
+        await File.findByIdAndDelete(req.params.id);
+
+        res.json({ message: 'File deleted successfully.' });
+    } catch (error) {
+        console.error('Delete error:', error);
+        res.status(500).json({ message: 'Server error during deletion.' });
+    }
+});
+
+// POST /api/files/delete-bulk — Delete multiple PDFs at once (uploader only)
+router.post('/delete-bulk', authMiddleware, uploaderOnly, async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || !Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ message: 'No file IDs provided.' });
+        }
+
+        const result = await File.deleteMany({ _id: { $in: ids } });
+
+        res.json({
+            message: `${result.deletedCount} file(s) deleted successfully.`,
+            deletedCount: result.deletedCount,
+        });
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        res.status(500).json({ message: 'Server error during bulk deletion.' });
+    }
+});
+
 module.exports = router;
+

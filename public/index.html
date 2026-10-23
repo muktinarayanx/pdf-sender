@@ -61,7 +61,7 @@
             <polyline points="17 8 12 3 7 8" />
             <line x1="12" y1="3" x2="12" y2="15" />
           </svg>
-          <h2>Upload PDF</h2>
+          <h2>Upload PDFs</h2>
         </div>
         <form id="uploadForm" class="upload-form">
           <div class="drop-zone" id="dropZone">
@@ -69,16 +69,14 @@
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
             </svg>
-            <p>Drag & drop a PDF here, or <strong>click to browse</strong></p>
-            <span class="drop-hint">Max file size: 10 MB</span>
-            <input type="file" id="pdfInput" accept="application/pdf" hidden>
+            <p>Drag & drop PDFs here, or <strong>click to browse</strong></p>
+            <span class="drop-hint">Max 10 files · 10 MB each</span>
+            <input type="file" id="pdfInput" accept="application/pdf" multiple hidden>
           </div>
-          <div class="selected-file hidden" id="selectedFile">
-            <span id="selectedFileName"></span>
-            <button type="button" class="btn-remove" id="removeFile">&times;</button>
-          </div>
+          <!-- Selected files list (multi-file preview) -->
+          <div class="selected-files-list hidden" id="selectedFilesList"></div>
           <button type="submit" class="btn btn-primary btn-full" id="uploadBtn" disabled>
-            <span class="btn-text">Upload PDF</span>
+            <span class="btn-text">Upload PDFs</span>
             <span class="btn-loader hidden"></span>
           </button>
           <div class="form-message" id="uploadMessage"></div>
@@ -92,12 +90,25 @@
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
           </svg>
           <h2>Uploaded PDFs</h2>
-          <button class="btn btn-ghost btn-sm" id="refreshBtn" title="Refresh">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-          </button>
+          <div class="card-header-actions">
+            <!-- Bulk delete controls — visible to uploaders only -->
+            <button class="btn btn-danger btn-sm hidden" id="deleteSelectedBtn" title="Delete Selected">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                <path d="M10 11v6" />
+                <path d="M14 11v6" />
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+              </svg>
+              <span id="deleteSelectedCount">Delete (0)</span>
+            </button>
+            <button class="btn btn-ghost btn-sm" id="refreshBtn" title="Refresh">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="filesList" class="files-list">
           <div class="loading-placeholder">
@@ -107,6 +118,25 @@
         </div>
       </div>
     </section>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="modal-overlay hidden" id="deleteModal">
+    <div class="modal">
+      <div class="modal-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+      <h3 id="deleteModalTitle">Delete File?</h3>
+      <p id="deleteModalMessage">This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="deleteCancelBtn">Cancel</button>
+        <button class="btn btn-danger" id="deleteConfirmBtn">Delete</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

@@ -22,6 +22,9 @@
   --success-bg: rgba(52, 211, 153, 0.1);
   --error: #f87171;
   --error-bg: rgba(248, 113, 113, 0.1);
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-glow: rgba(239, 68, 68, 0.25);
   --warning: #fbbf24;
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -134,6 +137,22 @@ body {
   background: var(--bg-input);
 }
 
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  padding: 10px 18px;
+  box-shadow: 0 2px 12px var(--danger-glow);
+}
+.btn-danger:hover:not(:disabled) {
+  background: var(--danger-hover);
+  box-shadow: 0 4px 20px var(--danger-glow);
+  transform: translateY(-1px);
+}
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-sm {
   padding: 6px 10px;
   font-size: 0.8rem;
@@ -154,11 +173,47 @@ body {
   cursor: pointer;
   transition: all var(--transition);
   font-family: inherit;
+  white-space: nowrap;
 }
 .btn-download:hover {
   background: var(--accent);
   color: #fff;
   box-shadow: 0 2px 12px var(--accent-glow);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color var(--transition);
+}
+.btn-link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* ===== Delete Single Button ===== */
+.btn-delete-single {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-delete-single:hover {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--error-bg);
 }
 
 /* ===== Auth Section ===== */
@@ -311,6 +366,12 @@ body {
   color: var(--accent);
 }
 
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ===== Upload ===== */
 .drop-zone {
   border: 2px dashed var(--border);
@@ -347,6 +408,82 @@ body {
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-top: 8px;
+}
+
+/* ===== Multi-file Preview List ===== */
+.selected-files-list {
+  margin-bottom: 16px;
+}
+
+.pending-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.pending-count {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pending-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 6px;
+  animation: fadeSlideIn 0.25s ease;
+}
+
+.pending-file-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.pending-file-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pending-file-name {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pending-file-size {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.add-more-btn {
+  margin-top: 6px;
+  display: block;
+}
+
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .selected-file {
@@ -405,10 +542,65 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 14px 18px;
-  transition: border-color var(--transition);
+  transition: border-color var(--transition), background var(--transition);
 }
 .file-item:hover {
   border-color: var(--text-muted);
+}
+.file-item.file-selected {
+  border-color: var(--accent);
+  background: rgba(108, 99, 255, 0.06);
+}
+
+/* ===== Custom Checkbox ===== */
+.file-checkbox-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.file-checkbox {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.checkbox-custom {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.checkbox-custom::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 2px;
+  transform: scale(0);
+  transition: transform 0.15s ease;
+}
+
+.file-checkbox:checked + .checkbox-custom {
+  border-color: var(--accent);
+}
+
+.file-checkbox:checked + .checkbox-custom::after {
+  transform: scale(1);
+}
+
+.file-checkbox-label:hover .checkbox-custom {
+  border-color: var(--accent);
 }
 
 .file-icon {
@@ -444,6 +636,89 @@ body {
   font-size: 0.78rem;
   color: var(--text-muted);
   margin-top: 2px;
+}
+
+.file-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ===== Delete Confirmation Modal ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 16px 64px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: scaleIn 0.25s ease;
+}
+
+.modal-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  color: var(--danger);
+}
+
+.modal-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.modal h3 {
+  font-size: 1.15rem;
+  margin-bottom: 8px;
+}
+
+.modal p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.modal-actions .btn {
+  min-width: 100px;
+  padding: 10px 20px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 /* ===== Empty State ===== */
@@ -502,13 +777,30 @@ body {
   }
 
   .file-item {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-wrap: wrap;
     gap: 10px;
   }
 
-  .file-item .btn-download {
+  .file-actions {
     width: 100%;
+    justify-content: flex-end;
+  }
+
+  .file-actions .btn-download {
+    flex: 1;
     text-align: center;
+  }
+
+  .card-header {
+    flex-wrap: wrap;
+  }
+
+  .card-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .modal {
+    padding: 24px;
   }
 }
