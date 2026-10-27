@@ -30,7 +30,7 @@ router.post('/register', async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: role === 'uploader' ? 'uploader' : 'user',
+            role: (role === 'admin' || role === 'uploader') ? role : 'user',
         });
 
         // Generate JWT

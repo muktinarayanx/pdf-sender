@@ -72,7 +72,7 @@ function formatSize(bytes) {
 }
 
 function isUploader() {
-    return user && user.role === 'uploader';
+    return user && (user.role === 'admin' || user.role === 'uploader');
 }
 
 // ===== UI State =====
@@ -83,7 +83,7 @@ function updateUI() {
         headerNav.style.display = 'flex';
         userBadge.textContent = `${user.name} (${user.role})`;
 
-        if (user.role === 'uploader') {
+        if (isUploader()) {
             uploadCard.classList.remove('hidden');
         } else {
             uploadCard.classList.add('hidden');
