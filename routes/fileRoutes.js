@@ -26,11 +26,32 @@ router.post('/upload', authMiddleware, uploaderOnly, upload.array('pdf', 10), as
             return res.status(400).json({ message: 'No PDF file(s) provided.' });
         }
 
+        let customNames = [];
+        if (req.body.customNames) {
+            try {
+                customNames = typeof req.body.customNames === 'string' && req.body.customNames.trim().startsWith('[')
+                    ? JSON.parse(req.body.customNames)
+                    : (Array.isArray(req.body.customNames) ? req.body.customNames : [req.body.customNames]);
+            } catch (err) {
+                customNames = [req.body.customNames];
+            }
+        }
+
         // Store each PDF binary data directly in MongoDB
         const savedFiles = [];
-        for (const f of req.files) {
+        for (let i = 0; i < req.files.length; i++) {
+            const f = req.files[i];
+            let resolvedName = customNames[i] && String(customNames[i]).trim()
+                ? String(customNames[i]).trim()
+                : f.originalname;
+
+            // Ensure .pdf extension
+            if (!resolvedName.toLowerCase().endsWith('.pdf')) {
+                resolvedName += '.pdf';
+            }
+
             const file = await File.create({
-                fileName: f.originalname,
+                fileName: resolvedName,
                 fileData: f.buffer,
                 contentType: f.mimetype,
                 fileSize: f.size,
@@ -70,6 +91,24 @@ router.get('/', authMiddleware, async (req, res) => {
     } catch (error) {
         console.error('Fetch files error:', error);
         res.status(500).json({ message: 'Server error fetching files.' });
+    }
+});
+
+// GET /api/files/view/:id — View a PDF inline for in-browser preview (any authenticated user)
+router.get('/view/:id', authMiddleware, async (req, res) => {
+    try {
+        const file = await File.findById(req.params.id);
+        if (!file) {
+            return res.status(404).json({ message: 'File not found.' });
+        }
+
+        res.setHeader('Content-Type', file.contentType || 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(file.fileName)}"`);
+        res.setHeader('Content-Length', file.fileSize);
+        res.send(file.fileData);
+    } catch (error) {
+        console.error('View error:', error);
+        res.status(500).json({ message: 'Server error during view.' });
     }
 });
 
