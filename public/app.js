@@ -58,6 +58,7 @@ const namingDay = document.getElementById('namingDay');
 const namingMonth = document.getElementById('namingMonth');
 const namingPreviewFilename = document.getElementById('namingPreviewFilename');
 const resetDateTodayBtn = document.getElementById('resetDateTodayBtn');
+const autoRenameExistingBtn = document.getElementById('autoRenameExistingBtn');
 
 // File showcase & toolbar
 const filesList = document.getElementById('filesList');
@@ -86,6 +87,13 @@ const deleteModalTitle = document.getElementById('deleteModalTitle');
 const deleteModalMessage = document.getElementById('deleteModalMessage');
 const deleteCancelBtn = document.getElementById('deleteCancelBtn');
 const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+
+// Rename Modal
+const renameModal = document.getElementById('renameModal');
+const renameInput = document.getElementById('renameInput');
+const renameCancelBtn = document.getElementById('renameCancelBtn');
+const renameSaveBtn = document.getElementById('renameSaveBtn');
+let currentRenamingFileId = null;
 
 const toastStack = document.getElementById('toastStack');
 
@@ -193,6 +201,33 @@ function clearMessages() {
 }
 
 // ===== Auto-Naming Logic ("All - DD - MM") =====
+function getNextAutoName(baseName, pendingIndex) {
+    const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escapedBase}(\\s*\\((\\d+)\\))?\\.pdf$`, 'i');
+
+    const taken = new Set();
+    if (Array.isArray(allFiles)) {
+        for (const f of allFiles) {
+            const m = f.fileName && f.fileName.match(regex);
+            if (m) {
+                taken.add(m[2] ? parseInt(m[2], 10) : 1);
+            }
+        }
+    }
+
+    let count = 0;
+    let num = 1;
+    while (true) {
+        if (!taken.has(num)) {
+            if (count === pendingIndex) {
+                return num === 1 ? `${baseName}.pdf` : `${baseName} (${num}).pdf`;
+            }
+            count++;
+        }
+        num++;
+    }
+}
+
 function updateNamingPreview() {
     const prefix = (namingPrefix.value || 'All').trim();
     const day = (namingDay.value || '01').trim().padStart(2, '0');
@@ -204,14 +239,14 @@ function updateNamingPreview() {
     autoNameConfig.month = month;
 
     const baseName = `${prefix} - ${day} - ${month}`;
-    namingPreviewFilename.textContent = `${baseName}.pdf`;
+    namingPreviewFilename.textContent = getNextAutoName(baseName, 0);
     statNamingFormat.textContent = baseName;
 
     // If there are currently staged files, re-apply names
     if (pendingFiles.length > 0) {
         pendingFiles.forEach((item, idx) => {
             if (autoNameConfig.enabled) {
-                item.customName = idx === 0 ? `${baseName}.pdf` : `${baseName} (${idx + 1}).pdf`;
+                item.customName = getNextAutoName(baseName, idx);
             } else {
                 item.customName = item.originalName;
             }
@@ -364,7 +399,7 @@ function addPendingFiles(files) {
             let targetName = f.name;
             if (autoNameConfig.enabled) {
                 const idx = pendingFiles.length;
-                targetName = idx === 0 ? `${baseName}.pdf` : `${baseName} (${idx + 1}).pdf`;
+                targetName = getNextAutoName(baseName, idx);
             }
 
             pendingFiles.push({
@@ -385,7 +420,7 @@ function removePendingFile(index) {
     if (autoNameConfig.enabled) {
         const baseName = `${autoNameConfig.prefix} - ${autoNameConfig.day} - ${autoNameConfig.month}`;
         pendingFiles.forEach((item, idx) => {
-            item.customName = idx === 0 ? `${baseName}.pdf` : `${baseName} (${idx + 1}).pdf`;
+            item.customName = getNextAutoName(baseName, idx);
         });
     }
     renderPendingFiles();
@@ -808,6 +843,12 @@ function renderFiles() {
                     <span>Download</span>
                   </button>
                   ${showDelete ? `
+                    <button type="button" class="action-icon-btn action-edit-btn" onclick="openRenameModal('${file._id}', '${safeName}')" title="Rename file">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
                     <button type="button" class="action-icon-btn action-danger-btn" onclick="confirmDeleteSingle('${file._id}', '${safeName}')" title="Delete permanently">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15">
                         <polyline points="3 6 5 6 21 6"/>
@@ -864,6 +905,12 @@ function renderFiles() {
                     <span>Download</span>
                   </button>
                   ${showDelete ? `
+                    <button type="button" class="action-icon-btn action-edit-btn" onclick="openRenameModal('${file._id}', '${safeName}')" title="Rename file">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </button>
                     <button type="button" class="action-icon-btn action-danger-btn" onclick="confirmDeleteSingle('${file._id}', '${safeName}')" title="Delete">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                         <polyline points="3 6 5 6 21 6"/>
@@ -1070,10 +1117,114 @@ async function downloadFile(id, name) {
     }
 }
 
+// ===== Rename Modal Logic =====
+function openRenameModal(fileId, currentName) {
+    currentRenamingFileId = fileId;
+    renameInput.value = currentName;
+    renameModal.classList.remove('hidden');
+    setTimeout(() => {
+        renameInput.focus();
+        renameInput.select();
+    }, 100);
+}
+
+function closeRenameModal() {
+    currentRenamingFileId = null;
+    renameModal.classList.add('hidden');
+}
+
+if (renameCancelBtn) {
+    renameCancelBtn.addEventListener('click', closeRenameModal);
+}
+
+if (renameSaveBtn) {
+    renameSaveBtn.addEventListener('click', async () => {
+        if (!currentRenamingFileId) return;
+        let newName = renameInput.value.trim();
+        if (!newName) {
+            showToast('Filename cannot be empty.', 'error');
+            return;
+        }
+        if (!newName.toLowerCase().endsWith('.pdf')) {
+            newName += '.pdf';
+        }
+
+        try {
+            renameSaveBtn.disabled = true;
+            renameSaveBtn.textContent = 'Saving…';
+            const res = await fetch(`${API}/api/files/${currentRenamingFileId}/rename`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ newName }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.message || 'Failed to rename file.', 'error');
+                return;
+            }
+            showToast(data.message || 'File renamed successfully!', 'success');
+            closeRenameModal();
+            await fetchFiles();
+        } catch (err) {
+            showToast('Error connecting to server.', 'error');
+        } finally {
+            renameSaveBtn.disabled = false;
+            renameSaveBtn.textContent = 'Save Changes';
+        }
+    });
+}
+
+if (renameInput) {
+    renameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            renameSaveBtn.click();
+        }
+    });
+}
+
+if (autoRenameExistingBtn) {
+    autoRenameExistingBtn.addEventListener('click', async () => {
+        if (!confirm('This will rename existing files to "All - DD - MM" format according to their upload dates. Continue?')) {
+            return;
+        }
+        try {
+            autoRenameExistingBtn.disabled = true;
+            autoRenameExistingBtn.textContent = 'Renaming…';
+            const res = await fetch(`${API}/api/files/auto-rename-all`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({ prefix: autoNameConfig.prefix || 'All' }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                showToast(data.message || 'Auto-rename failed.', 'error');
+                return;
+            }
+            showToast(data.message, 'success');
+            await fetchFiles();
+        } catch (err) {
+            showToast('Failed to auto-rename existing files.', 'error');
+        } finally {
+            autoRenameExistingBtn.disabled = false;
+            autoRenameExistingBtn.textContent = 'Auto-rename All';
+        }
+    });
+}
+
 window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         if (!deleteModal.classList.contains('hidden')) {
             hideDeleteModal();
+        }
+        if (renameModal && !renameModal.classList.contains('hidden')) {
+            closeRenameModal();
         }
     }
 });

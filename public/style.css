@@ -611,6 +611,13 @@ body {
   gap: 12px;
 }
 
+.naming-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .naming-title-row {
   display: flex;
   align-items: center;
@@ -1640,6 +1647,84 @@ input:checked + .checkbox-custom::after {
 }
 
 
+
+/* ===== Rename Modal ===== */
+.rename-modal {
+  background: var(--bg-card);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  max-width: 440px;
+  width: 90%;
+  text-align: left;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: scaleIn 0.2s ease;
+}
+
+.rename-modal .modal-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.12);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.rename-modal h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.rename-modal p {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+}
+
+.rename-input-wrap {
+  margin-bottom: 24px;
+}
+
+.rename-input-wrap label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.rename-input-wrap input {
+  width: 100%;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.rename-input-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.action-edit-btn {
+  color: var(--text-secondary);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.action-edit-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.12);
+}
 
 /* ===== Delete Confirm Modal ===== */
 .delete-confirm-modal {
