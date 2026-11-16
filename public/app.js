@@ -774,8 +774,6 @@ function renderFiles() {
     if (currentView === 'grid') {
         filesList.innerHTML = filteredFiles.map(file => {
             const isSelected = selectedFiles.has(file._id);
-            const uploaderName = file.uploadedBy ? file.uploadedBy.name : 'Unknown';
-            const uploaderInitial = uploaderName.charAt(0).toUpperCase();
             const safeName = escapeHtml(file.fileName);
             const formattedDate = formatDate(file.uploadDate);
             const relativeTime = formatRelativeTime(file.uploadDate);
@@ -788,10 +786,6 @@ function renderFiles() {
                     <span class="checkbox-custom"></span>
                   </label>
                   <div class="pdf-chip">PDF</div>
-                  <div class="uploader-chip" title="Uploaded by ${escapeHtml(uploaderName)}">
-                    <span class="uploader-chip-avatar">${uploaderInitial}</span>
-                    <span>${escapeHtml(uploaderName)}</span>
-                  </div>
                 </div>
 
                 <!-- Document Cover / Click to Download -->
@@ -867,7 +861,6 @@ function renderFiles() {
         // List View Mode
         filesList.innerHTML = filteredFiles.map(file => {
             const isSelected = selectedFiles.has(file._id);
-            const uploaderName = file.uploadedBy ? file.uploadedBy.name : 'Unknown';
             const safeName = escapeHtml(file.fileName);
             const formattedDate = formatDate(file.uploadDate);
 
@@ -888,8 +881,6 @@ function renderFiles() {
                     ${safeName}
                   </h4>
                   <div class="list-file-meta">
-                    <span>${escapeHtml(uploaderName)}</span>
-                    <span>·</span>
                     <span>${formattedDate}</span>
                     <span>·</span>
                     <span class="size-pill">${formatSize(file.fileSize)}</span>
