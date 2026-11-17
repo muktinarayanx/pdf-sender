@@ -39,7 +39,48 @@ function getDayAndMonth(date = new Date(), timeZone = process.env.TIMEZONE || 'A
     }
 }
 
-// Generate the next auto-renamed filename: "All - DD - MM.pdf" or "All - DD - MM (2).pdf"
+// Parse auto-naming pattern from filename (e.g. "all-22", "all_22", "All_20.pdf", "all-22-11")
+function parseAutoName(rawName, defaultDate = new Date()) {
+    if (!rawName) return null;
+    const clean = String(rawName).replace(/\.pdf$/i, '').trim();
+    if (!clean) return null;
+
+    const { month: defaultMonth } = getDayAndMonth(defaultDate);
+
+    // Pattern 1: prefix-day-month (e.g. "All-22-11", "all_22_11", "All - 22 - 11", "all 22 11")
+    const m1 = clean.match(/^([a-zA-Z]+)[-_\s]+(\d{1,2})[-_\s]+(\d{1,2})$/);
+    if (m1) {
+        const prefix = m1[1].charAt(0).toUpperCase() + m1[1].slice(1).toLowerCase();
+        const day = m1[2].padStart(2, '0');
+        const month = m1[3].padStart(2, '0');
+        return { prefix, day, month };
+    }
+
+    // Pattern 2: prefix-day (e.g. "all-22", "All_22", "All_20", "all 22", "All-20")
+    // Converts e.g. "all-22" to prefix: "All", day: "22", month: current month ("11") -> "All-22-11"
+    const m2 = clean.match(/^([a-zA-Z]+)[-_\s]+(\d{1,2})$/);
+    if (m2) {
+        const prefix = m2[1].charAt(0).toUpperCase() + m2[1].slice(1).toLowerCase();
+        const day = m2[2].padStart(2, '0');
+        return { prefix, day, month: defaultMonth };
+    }
+
+    // Pattern 3: just day number (e.g. "22" or "20")
+    const m3 = clean.match(/^(\d{1,2})$/);
+    if (m3) {
+        return { prefix: 'All', day: m3[1].padStart(2, '0'), month: defaultMonth };
+    }
+
+    // Pattern 4: day-month without prefix (e.g. "22-11", "22_11")
+    const m4 = clean.match(/^(\d{1,2})[-_\s]+(\d{1,2})$/);
+    if (m4) {
+        return { prefix: 'All', day: m4[1].padStart(2, '0'), month: m4[2].padStart(2, '0') };
+    }
+
+    return null;
+}
+
+// Generate the next auto-renamed filename: "All-DD-MM.pdf" or "All-DD-MM (2).pdf"
 async function generateAutoFileName({
     prefix = 'All',
     date = new Date(),
@@ -52,9 +93,11 @@ async function generateAutoFileName({
     const day = (customDay || defaultDay).padStart(2, '0');
     const month = (customMonth || defaultMonth).padStart(2, '0');
 
-    const baseName = `${cleanPrefix} - ${day} - ${month}`;
-    const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`^${escapedBase}(\\s*\\((\\d+)\\))?\\.pdf$`, 'i');
+    const baseName = `${cleanPrefix}-${day}-${month}`;
+    const escapedPrefix = cleanPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Matches both "All-22-11.pdf" and legacy "All - 22 - 11.pdf" as well as indexed versions e.g. "(2)"
+    const regex = new RegExp(`^${escapedPrefix}[-_\\s]+${day}[-_\\s]+${month}(\\s*\\((\\d+)\\))?\\.pdf$`, 'i');
 
     const existingFiles = await File.find({ fileName: regex }).select('fileName');
     const takenIndices = new Set();
@@ -106,21 +149,39 @@ router.post('/upload', authMiddleware, uploaderOnly, upload.array('pdf', 10), as
         const savedFiles = [];
         for (let i = 0; i < req.files.length; i++) {
             const f = req.files[i];
-            let resolvedName = customNames[i] && String(customNames[i]).trim()
+            const rawCustomName = customNames[i] && String(customNames[i]).trim()
                 ? String(customNames[i]).trim()
                 : null;
+            const rawName = rawCustomName || f.originalname;
 
-            // If no custom name was provided (e.g. automated uploads), apply auto-rename system
-            if (!resolvedName && !autoRenameExplicitlyDisabled) {
-                resolvedName = await generateAutoFileName({
-                    prefix: req.body.prefix || 'All',
-                    date: new Date(),
-                    customDay: req.body.day ? String(req.body.day).trim() : null,
-                    customMonth: req.body.month ? String(req.body.month).trim() : null,
-                    usedInBatch: batchUsedNames,
-                });
-            } else if (!resolvedName) {
-                resolvedName = f.originalname;
+            let resolvedName = null;
+
+            if (!autoRenameExplicitlyDisabled) {
+                // Check if filename has an auto-naming pattern (e.g. "all-22" -> All-22-11)
+                const parsed = parseAutoName(rawName, new Date());
+
+                if (parsed) {
+                    resolvedName = await generateAutoFileName({
+                        prefix: req.body.prefix || parsed.prefix,
+                        date: new Date(),
+                        customDay: req.body.day ? String(req.body.day).trim() : parsed.day,
+                        customMonth: req.body.month ? String(req.body.month).trim() : parsed.month,
+                        usedInBatch: batchUsedNames,
+                    });
+                } else if (!rawCustomName) {
+                    // No custom name provided and not a recognized day pattern -> use standard auto-rename for today
+                    resolvedName = await generateAutoFileName({
+                        prefix: req.body.prefix || 'All',
+                        date: new Date(),
+                        customDay: req.body.day ? String(req.body.day).trim() : null,
+                        customMonth: req.body.month ? String(req.body.month).trim() : null,
+                        usedInBatch: batchUsedNames,
+                    });
+                } else {
+                    resolvedName = rawCustomName;
+                }
+            } else {
+                resolvedName = rawCustomName || f.originalname;
             }
 
             // Ensure .pdf extension
@@ -281,7 +342,7 @@ router.patch('/:id/rename', authMiddleware, uploaderOnly, async (req, res) => {
     }
 });
 
-// POST /api/files/auto-rename-all — Auto-rename existing legacy files to "All - DD - MM" format based on uploadDate (uploader only)
+// POST /api/files/auto-rename-all — Auto-rename existing legacy files to "All-DD-MM" format (uploader only)
 router.post('/auto-rename-all', authMiddleware, uploaderOnly, async (req, res) => {
     try {
         const prefix = (req.body.prefix || 'All').trim();
@@ -292,8 +353,12 @@ router.post('/auto-rename-all', authMiddleware, uploaderOnly, async (req, res) =
         const updatedFiles = [];
 
         for (const file of files) {
-            const { day, month } = getDayAndMonth(file.uploadDate);
-            const dateKey = `${prefix} - ${day} - ${month}`;
+            // Check if existing filename already contains a day number (e.g. "All_22.pdf" -> day: 22)
+            const parsed = parseAutoName(file.fileName, file.uploadDate);
+            const { day: defaultDay, month: defaultMonth } = getDayAndMonth(file.uploadDate);
+            const day = parsed?.day || defaultDay;
+            const month = parsed?.month || defaultMonth;
+            const dateKey = `${prefix}-${day}-${month}`;
 
             if (!dateCounters[dateKey]) {
                 dateCounters[dateKey] = 0;
@@ -312,7 +377,7 @@ router.post('/auto-rename-all', authMiddleware, uploaderOnly, async (req, res) =
         }
 
         res.json({
-            message: `Auto-renamed ${updatedFiles.length} file(s) to "${prefix} - DD - MM" format.`,
+            message: `Auto-renamed ${updatedFiles.length} file(s) to "${prefix}-DD-MM" format.`,
             count: updatedFiles.length,
             updatedFiles,
         });

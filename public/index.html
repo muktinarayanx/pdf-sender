@@ -143,7 +143,7 @@
           </div>
           <div class="stat-info">
             <span class="stat-label">Auto Naming Format</span>
-            <span class="stat-value code-pill" id="statNamingFormat">All - DD - MM</span>
+            <span class="stat-value code-pill" id="statNamingFormat">All-DD-MM</span>
           </div>
         </div>
       </div>
@@ -170,12 +170,12 @@
         <div class="auto-naming-panel" id="autoNamingPanel">
           <div class="naming-header">
             <div class="naming-title-row">
-              <label class="switch-toggle" title="Toggle automatic All - DD - MM naming">
+              <label class="switch-toggle" title="Toggle automatic All-DD-MM naming">
                 <input type="checkbox" id="autoNameToggle" checked>
                 <span class="switch-slider"></span>
               </label>
               <div class="naming-title-text">
-                <span class="naming-title">Auto-rename to <strong>All - DD - MM</strong></span>
+                <span class="naming-title">Auto-rename to <strong>All-DD-MM</strong></span>
                 <span class="naming-hint">Automatically formats your uploaded file names with day and month</span>
               </div>
             </div>
@@ -183,7 +183,7 @@
               <button type="button" class="btn btn-ghost btn-xs" id="resetDateTodayBtn" title="Set to Today">
                 Today's Date
               </button>
-              <button type="button" class="btn btn-outline btn-xs" id="autoRenameExistingBtn" title="Apply All - DD - MM naming to legacy uploaded files">
+              <button type="button" class="btn btn-outline btn-xs" id="autoRenameExistingBtn" title="Apply All-DD-MM naming to legacy uploaded files">
                 Auto-rename All
               </button>
             </div>
@@ -210,7 +210,7 @@
 
             <div class="naming-live-preview">
               <span class="preview-tag">Preview:</span>
-              <span class="preview-filename" id="namingPreviewFilename">All - 29 - 10.pdf</span>
+              <span class="preview-filename" id="namingPreviewFilename">All-29-10.pdf</span>
             </div>
           </div>
         </div>
@@ -392,7 +392,7 @@
       <p>Enter a new name for this file.</p>
       <div class="rename-input-wrap">
         <label for="renameInput">File Name (.pdf)</label>
-        <input type="text" id="renameInput" placeholder="All - DD - MM.pdf" autocomplete="off">
+        <input type="text" id="renameInput" placeholder="All-DD-MM.pdf" autocomplete="off">
       </div>
       <div class="modal-actions">
         <button class="btn btn-ghost" id="renameCancelBtn">Cancel</button>

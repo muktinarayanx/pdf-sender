@@ -200,10 +200,54 @@ function clearMessages() {
     });
 }
 
-// ===== Auto-Naming Logic ("All - DD - MM") =====
+// ===== Auto-Naming Logic ("All-DD-MM") =====
+function parseAutoName(rawName) {
+    if (!rawName) return null;
+    const clean = String(rawName).replace(/\.pdf$/i, '').trim();
+    if (!clean) return null;
+    const monthNow = String(now.getMonth() + 1).padStart(2, '0');
+
+    // Pattern 1: prefix-day-month (e.g. "All-22-11", "all_22_11", "All - 22 - 11")
+    const m1 = clean.match(/^([a-zA-Z]+)[-_\s]+(\d{1,2})[-_\s]+(\d{1,2})$/);
+    if (m1) {
+        const prefix = m1[1].charAt(0).toUpperCase() + m1[1].slice(1).toLowerCase();
+        const day = m1[2].padStart(2, '0');
+        const month = m1[3].padStart(2, '0');
+        return { prefix, day, month };
+    }
+
+    // Pattern 2: prefix-day (e.g. "all-22", "All_22", "All_20") -> "All-22-11"
+    const m2 = clean.match(/^([a-zA-Z]+)[-_\s]+(\d{1,2})$/);
+    if (m2) {
+        const prefix = m2[1].charAt(0).toUpperCase() + m2[1].slice(1).toLowerCase();
+        const day = m2[2].padStart(2, '0');
+        return { prefix, day, month: autoNameConfig.month || monthNow };
+    }
+
+    // Pattern 3: just day number (e.g. "22" or "20")
+    const m3 = clean.match(/^(\d{1,2})$/);
+    if (m3) {
+        return { prefix: 'All', day: m3[1].padStart(2, '0'), month: autoNameConfig.month || monthNow };
+    }
+
+    // Pattern 4: day-month without prefix (e.g. "22-11", "22_11")
+    const m4 = clean.match(/^(\d{1,2})[-_\s]+(\d{1,2})$/);
+    if (m4) {
+        return { prefix: 'All', day: m4[1].padStart(2, '0'), month: m4[2].padStart(2, '0') };
+    }
+
+    return null;
+}
+
 function getNextAutoName(baseName, pendingIndex) {
-    const escapedBase = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`^${escapedBase}(\\s*\\((\\d+)\\))?\\.pdf$`, 'i');
+    const parts = baseName.split(/[-_\s]+/);
+    const prefix = parts[0] || 'All';
+    const day = parts[1] || '';
+    const month = parts[2] || '';
+
+    // Matches both "All-22-11.pdf" and "All - 22 - 11.pdf"
+    const escapedPrefix = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`^${escapedPrefix}[-_\\s]+${day}[-_\\s]+${month}(\\s*\\((\\d+)\\))?\\.pdf$`, 'i');
 
     const taken = new Set();
     if (Array.isArray(allFiles)) {
@@ -238,7 +282,7 @@ function updateNamingPreview() {
     autoNameConfig.day = day;
     autoNameConfig.month = month;
 
-    const baseName = `${prefix} - ${day} - ${month}`;
+    const baseName = `${prefix}-${day}-${month}`;
     namingPreviewFilename.textContent = getNextAutoName(baseName, 0);
     statNamingFormat.textContent = baseName;
 
@@ -246,7 +290,13 @@ function updateNamingPreview() {
     if (pendingFiles.length > 0) {
         pendingFiles.forEach((item, idx) => {
             if (autoNameConfig.enabled) {
-                item.customName = getNextAutoName(baseName, idx);
+                const parsed = parseAutoName(item.originalName);
+                if (parsed) {
+                    const specificBase = `${parsed.prefix}-${parsed.day}-${parsed.month}`;
+                    item.customName = getNextAutoName(specificBase, idx);
+                } else {
+                    item.customName = getNextAutoName(baseName, idx);
+                }
             } else {
                 item.customName = item.originalName;
             }
@@ -385,7 +435,7 @@ pdfInput.addEventListener('change', () => {
 });
 
 function addPendingFiles(files) {
-    const baseName = `${autoNameConfig.prefix} - ${autoNameConfig.day} - ${autoNameConfig.month}`;
+    const baseName = `${autoNameConfig.prefix}-${autoNameConfig.day}-${autoNameConfig.month}`;
 
     for (const f of files) {
         if (pendingFiles.length >= 10) {
@@ -398,8 +448,15 @@ function addPendingFiles(files) {
         if (!exists) {
             let targetName = f.name;
             if (autoNameConfig.enabled) {
-                const idx = pendingFiles.length;
-                targetName = getNextAutoName(baseName, idx);
+                // If the dropped file is e.g. "all-22.pdf", extract day "22" and format to "All-22-11.pdf"
+                const parsed = parseAutoName(f.name);
+                if (parsed) {
+                    const specificBase = `${parsed.prefix}-${parsed.day}-${parsed.month}`;
+                    targetName = getNextAutoName(specificBase, 0);
+                } else {
+                    const idx = pendingFiles.length;
+                    targetName = getNextAutoName(baseName, idx);
+                }
             }
 
             pendingFiles.push({
@@ -418,9 +475,15 @@ function removePendingFile(index) {
     pendingFiles.splice(index, 1);
     // If auto-naming is active, re-index filenames
     if (autoNameConfig.enabled) {
-        const baseName = `${autoNameConfig.prefix} - ${autoNameConfig.day} - ${autoNameConfig.month}`;
+        const baseName = `${autoNameConfig.prefix}-${autoNameConfig.day}-${autoNameConfig.month}`;
         pendingFiles.forEach((item, idx) => {
-            item.customName = getNextAutoName(baseName, idx);
+            const parsed = parseAutoName(item.originalName);
+            if (parsed) {
+                const specificBase = `${parsed.prefix}-${parsed.day}-${parsed.month}`;
+                item.customName = getNextAutoName(specificBase, idx);
+            } else {
+                item.customName = getNextAutoName(baseName, idx);
+            }
         });
     }
     renderPendingFiles();
@@ -475,7 +538,7 @@ function renderPendingFiles() {
                 title="Edit upload filename"
                 onchange="updatePendingCustomName(${i}, this.value)"
               />
-              ${autoNameConfig.enabled ? `<span class="auto-renamed-tag">All - DD - MM</span>` : ''}
+              ${autoNameConfig.enabled ? `<span class="auto-renamed-tag">All-DD-MM</span>` : ''}
             </div>
             <div class="pending-meta-row">
               <span class="pending-original-name" title="Original: ${escapeHtml(item.originalName)}">Original: ${escapeHtml(item.originalName)}</span>
@@ -1179,7 +1242,7 @@ if (renameInput) {
 
 if (autoRenameExistingBtn) {
     autoRenameExistingBtn.addEventListener('click', async () => {
-        if (!confirm('This will rename existing files to "All - DD - MM" format according to their upload dates. Continue?')) {
+        if (!confirm('This will rename existing files to "All-DD-MM" format. Continue?')) {
             return;
         }
         try {
